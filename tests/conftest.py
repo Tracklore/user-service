@@ -4,7 +4,7 @@ import asyncio
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.main import app
-from app.db.database import Base, get_db
+from app.db.database import Base, get_db, engine
 from app.core.settings import settings
 from httpx import AsyncClient
 import httpx

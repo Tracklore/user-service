@@ -7,8 +7,10 @@ services:
       - "8001:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://testuser:testpass@db:5432/testdb
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     depends_on:
       - db
+      - rabbitmq
     volumes:
       - ../auth-service:/app
 
@@ -19,8 +21,10 @@ services:
     environment:
       - DATABASE_URL=sqlite+aiosqlite:///./test.db
       - AUTH_SERVICE_URL=http://auth-service:8000
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     depends_on:
       - auth-service
+      - rabbitmq
     volumes:
       - .:/app
 
@@ -35,5 +39,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
 volumes:
   postgres_data:
+  rabbitmq_data:

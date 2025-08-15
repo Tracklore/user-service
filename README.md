@@ -37,6 +37,7 @@ The user-service now strictly follows microservice principles:
 1. **Separation of Concerns**: Authentication data is managed entirely by the auth-service
 2. **Data References**: The user-service maintains references to auth-service users via foreign keys
 3. **Service Communication**: The user-service communicates with the auth-service via HTTP requests to fetch user data when needed
+4. **Event-Driven Communication**: The user-service consumes "UserCreated" events from a message queue to create auth user references
 
 ### Profile Management
 The service no longer performs CRUD operations on user profile fields in a shared users table. Instead, it:
@@ -46,6 +47,11 @@ The service no longer performs CRUD operations on user profile fields in a share
 
 ### Gamification & Learning
 The service uses separate database tables to store badges and learning goals. These tables have a foreign key relationship with the `auth_users` table to link the data to a specific user managed by the auth-service.
+
+## Message Queue Integration
+The user-service now consumes "UserCreated" events from a RabbitMQ message queue. When the auth-service creates a new user, it publishes an event to the queue. The user-service consumes this event and automatically creates an AuthUserReference record to maintain referential integrity.
+
+This approach eliminates the need for shared databases between services and provides a scalable, decoupled communication mechanism.
 
 ## Database Migration
 To migrate to the new microservice architecture:
@@ -59,4 +65,7 @@ To run the service:
 docker-compose up
 ```
 
-This will start the user-service, auth-service, and database in separate containers.
+This will start the user-service, auth-service, database, and RabbitMQ in separate containers.
+
+## Testing
+A simple health check test is included to verify the service is running correctly.
