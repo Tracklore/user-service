@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build: ../auth-service
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://testuser:testpass@db:5432/testdb
+    depends_on:
+      - db
+    volumes:
+      - ../auth-service:/app
+
+  user-service:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./test.db
+      - AUTH_SERVICE_URL=http://auth-service:8000
+    depends_on:
+      - auth-service
+    volumes:
+      - .:/app
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: testdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

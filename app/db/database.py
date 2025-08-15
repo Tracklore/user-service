@@ -6,6 +6,9 @@ engine = create_async_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
 Base = declarative_base()
 
+# Create a sync engine for alembic migrations
+sync_engine = engine.sync_engine
+
 async def get_db():
     async with SessionLocal() as session:
         yield session

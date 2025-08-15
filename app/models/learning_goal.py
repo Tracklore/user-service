@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
 from app.db.database import Base
 
 class LearningGoal(Base):
@@ -10,6 +9,5 @@ class LearningGoal(Base):
     description = Column(String)
     status = Column(String)
     streak_count = Column(Integer)
-    owner_id = Column(Integer, ForeignKey("users.id"))
-
-    owner = relationship("User", back_populates="learning_goals")
+    # Reference to auth-service user ID
+    auth_user_id = Column(Integer, ForeignKey("auth_users.id"))
