@@ -11,9 +11,8 @@ class AuthServiceClient:
         """Fetch user data from auth-service by ID"""
         try:
             response = await self.client.get(f"{self.base_url}/users/{user_id}")
-            if response.status_code == 200:
-                return response.json()
-            return None
+            response.raise_for_status()  # This will raise an exception for 4xx and 5xx status codes
+            return response.json()
         except Exception:
             return None
     
@@ -21,9 +20,8 @@ class AuthServiceClient:
         """Fetch user data from auth-service by email"""
         try:
             response = await self.client.get(f"{self.base_url}/users/email/{email}")
-            if response.status_code == 200:
-                return response.json()
-            return None
+            response.raise_for_status()  # This will raise an exception for 4xx and 5xx status codes
+            return response.json()
         except Exception:
             return None
     
@@ -44,7 +42,7 @@ class AuthServiceClient:
         # Use select() correctly without await on the execute result
         stmt = select(AuthUserReference).where(AuthUserReference.id == user_id)
         result = await db.execute(stmt)
-        auth_user_ref = result.scalar_one_or_none()
+        auth_user_ref = await result.scalar_one_or_none()
         
         if not auth_user_ref:
             return await self.create_auth_user_reference(user_id, db)

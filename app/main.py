@@ -3,7 +3,19 @@ from app.api import routes
 from app.db.database import engine, Base
 from app.services.message_queue_consumer import message_queue_consumer
 
-app = FastAPI()
+app = FastAPI(
+    title="User Service API",
+    description="API for managing user profiles, badges, and learning goals in the Tracklore application",
+    version="1.0.0",
+    contact={
+        "name": "Tracklore Team",
+        "url": "https://github.com/Tracklore/user-service",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://github.com/Tracklore/user-service/blob/main/LICENSE",
+    }
+)
 
 @app.on_event("startup")
 async def startup():
@@ -23,6 +35,12 @@ async def shutdown():
 
 app.include_router(routes.router)
 
-@app.get("/")
+@app.get("/", summary="Root endpoint", description="Welcome message for the User Service API")
 async def root():
+    """
+    Returns a welcome message for the User Service API.
+    
+    Returns:
+        dict: A dictionary containing a welcome message.
+    """
     return {"message": "Welcome to the User Service"}

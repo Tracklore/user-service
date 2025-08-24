@@ -12,124 +12,160 @@ from app.services.auth_service import auth_service_client
 router = APIRouter(
     prefix="/users",
     tags=["users"],
+    responses={404: {"description": "User not found"}},
 )
 
-@router.get("/me", response_model=dict)
+def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
+    """Dependency to get UserService instance."""
+    return UserService(db)
+
+@router.get("/me", response_model=dict, summary="Get current user profile", description="Retrieve the profile of the currently authenticated user from the auth-service.")
 async def read_users_me(current_user: dict = Depends(get_current_user_from_token)):
-    """Get the current user's profile from auth-service."""
-    # Current user is already provided by the auth service
+    """
+    Get the current user's profile from auth-service.
+    
+    Returns:
+        dict: The current user's profile data.
+    """
     return current_user
 
-@router.get("/{auth_user_id}", response_model=dict)
-async def read_user(auth_user_id: int, db: AsyncSession = Depends(get_db)):
-    """Get a user's profile by auth-service user ID."""
-    # Fetch user data from auth-service
-    user_data = await auth_service_client.get_user(auth_user_id)
-    if not user_data:
-        raise HTTPException(status_code=404, detail="User not found")
+@router.get("/{auth_user_id}", response_model=dict, summary="Get user profile", description="Retrieve a user's profile by their auth-service user ID, including badges and learning goals.")
+async def read_user(auth_user_id: int, user_service: UserService = Depends(get_user_service)):
+    """
+    Get a user's profile by auth-service user ID.
     
-    # Get user's badges and learning goals from our service
-    badges = await crud.badge.get_badges_by_user(db, auth_user_id)
-    learning_goals = await crud.learning_goal.get_learning_goals_by_user(db, auth_user_id)
-    
-    # Combine the data
-    user_profile = {
-        "id": user_data["id"],
-        "username": user_data["username"],
-        "email": user_data.get("email"),
-        "badges": badges,
-        "learning_goals": learning_goals
-    }
-    
-    return user_profile
+    Args:
+        auth_user_id (int): The ID of the user in the auth-service.
+        
+    Returns:
+        dict: The user's profile data including badges and learning goals.
+        
+    Raises:
+        HTTPException: If the user is not found (404).
+    """
+    return await user_service.get_user_profile(auth_user_id)
 
-@router.get("/{auth_user_id}/badges", response_model=List[schemas.Badge])
-async def read_user_badges(auth_user_id: int, db: AsyncSession = Depends(get_db)):
-    """Retrieve all badges earned by a user."""
-    # Ensure the auth user reference exists
-    await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, db)
+@router.get("/{auth_user_id}/badges", response_model=List[schemas.Badge], summary="Get user badges", description="Retrieve all badges earned by a specific user.")
+async def read_user_badges(auth_user_id: int, user_service: UserService = Depends(get_user_service)):
+    """
+    Retrieve all badges earned by a user.
     
-    badges = await crud.badge.get_badges_by_user(db, auth_user_id)
-    return badges
+    Args:
+        auth_user_id (int): The ID of the user in the auth-service.
+        
+    Returns:
+        List[schemas.Badge]: A list of badges earned by the user.
+    """
+    return await user_service.get_user_badges(auth_user_id)
 
-@router.post("/{auth_user_id}/badges", response_model=schemas.Badge)
+@router.post("/{auth_user_id}/badges", response_model=schemas.Badge, summary="Create user badge", description="Create a new badge for the authenticated user.", responses={403: {"description": "Not authorized to create a badge for this user"}})
 async def create_badge(
     auth_user_id: int, 
     badge: schemas.BadgeCreate, 
-    db: AsyncSession = Depends(get_db), 
+    user_service: UserService = Depends(get_user_service),
     current_user: dict = Depends(get_current_user_from_token)
 ):
-    """Creates a new badge for the authenticated user."""
-    if current_user["id"] != auth_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to create a badge for this user")
+    """
+    Creates a new badge for the authenticated user.
     
-    # Ensure the auth user reference exists
-    await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, db)
-    
-    return await crud.badge.create_user_badge(db, badge, auth_user_id)
+    Args:
+        auth_user_id (int): The ID of the user in the auth-service.
+        badge (schemas.BadgeCreate): The badge data to create.
+        user_service (UserService): The user service instance.
+        current_user (dict): The current authenticated user.
+        
+    Returns:
+        schemas.Badge: The created badge.
+        
+    Raises:
+        HTTPException: If the user is not authorized to create a badge for this user (403).
+    """
+    return await user_service.create_badge(auth_user_id, badge, current_user)
 
-@router.get("/{auth_user_id}/goals", response_model=List[schemas.LearningGoal])
-async def read_user_learning_goals(auth_user_id: int, db: AsyncSession = Depends(get_db)):
-    """Retrieve all learning goals for a user."""
-    # Ensure the auth user reference exists
-    await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, db)
+@router.get("/{auth_user_id}/goals", response_model=List[schemas.LearningGoal], summary="Get user learning goals", description="Retrieve all learning goals for a specific user.")
+async def read_user_learning_goals(auth_user_id: int, user_service: UserService = Depends(get_user_service)):
+    """
+    Retrieve all learning goals for a user.
     
-    goals = await crud.learning_goal.get_learning_goals_by_user(db, auth_user_id)
-    return goals
+    Args:
+        auth_user_id (int): The ID of the user in the auth-service.
+        
+    Returns:
+        List[schemas.LearningGoal]: A list of learning goals for the user.
+    """
+    return await user_service.get_user_learning_goals(auth_user_id)
 
-@router.post("/{auth_user_id}/goals", response_model=schemas.LearningGoal)
+@router.post("/{auth_user_id}/goals", response_model=schemas.LearningGoal, summary="Create learning goal", description="Create a new learning goal for the authenticated user.", responses={403: {"description": "Not authorized to create a learning goal for this user"}})
 async def create_learning_goal(
     auth_user_id: int, 
     learning_goal: schemas.LearningGoalCreate, 
-    db: AsyncSession = Depends(get_db), 
+    user_service: UserService = Depends(get_user_service),
     current_user: dict = Depends(get_current_user_from_token)
 ):
-    """Create a new learning goal for the authenticated user."""
-    if current_user["id"] != auth_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to create a learning goal for this user")
+    """
+    Create a new learning goal for the authenticated user.
     
-    # Ensure the auth user reference exists
-    await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, db)
-    
-    return await crud.learning_goal.create_user_learning_goal(db, learning_goal, auth_user_id)
+    Args:
+        auth_user_id (int): The ID of the user in the auth-service.
+        learning_goal (schemas.LearningGoalCreate): The learning goal data to create.
+        user_service (UserService): The user service instance.
+        current_user (dict): The current authenticated user.
+        
+    Returns:
+        schemas.LearningGoal: The created learning goal.
+        
+    Raises:
+        HTTPException: If the user is not authorized to create a learning goal for this user (403).
+    """
+    return await user_service.create_learning_goal(auth_user_id, learning_goal, current_user)
 
-@router.put("/{auth_user_id}/goals/{goal_id}", response_model=schemas.LearningGoal)
+@router.put("/{auth_user_id}/goals/{goal_id}", response_model=schemas.LearningGoal, summary="Update learning goal", description="Update a specific learning goal for the authenticated user.", responses={403: {"description": "Not authorized to update this learning goal"}, 404: {"description": "Learning goal not found"}})
 async def update_learning_goal(
     auth_user_id: int, 
     goal_id: int, 
     learning_goal: schemas.LearningGoalUpdate, 
-    db: AsyncSession = Depends(get_db), 
+    user_service: UserService = Depends(get_user_service),
     current_user: dict = Depends(get_current_user_from_token)
 ):
-    """Update a learning goal for the authenticated user."""
-    if current_user["id"] != auth_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this learning goal")
+    """
+    Update a learning goal for the authenticated user.
     
-    # Ensure the auth user reference exists
-    await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, db)
-    
-    updated_goal = await crud.learning_goal.update_learning_goal(db, goal_id, auth_user_id, learning_goal)
-    if not updated_goal:
-        raise HTTPException(status_code=404, detail="Learning goal not found")
-    
-    return updated_goal
+    Args:
+        auth_user_id (int): The ID of the user in the auth-service.
+        goal_id (int): The ID of the learning goal to update.
+        learning_goal (schemas.LearningGoalUpdate): The learning goal data to update.
+        user_service (UserService): The user service instance.
+        current_user (dict): The current authenticated user.
+        
+    Returns:
+        schemas.LearningGoal: The updated learning goal.
+        
+    Raises:
+        HTTPException: If the user is not authorized to update this learning goal (403) or if the learning goal is not found (404).
+    """
+    return await user_service.update_learning_goal(auth_user_id, goal_id, learning_goal, current_user)
 
-@router.delete("/{auth_user_id}/goals/{goal_id}")
+@router.delete("/{auth_user_id}/goals/{goal_id}", summary="Delete learning goal", description="Delete a specific learning goal for the authenticated user.", responses={403: {"description": "Not authorized to delete this learning goal"}, 404: {"description": "Learning goal not found"}})
 async def delete_learning_goal(
     auth_user_id: int, 
     goal_id: int, 
-    db: AsyncSession = Depends(get_db), 
+    user_service: UserService = Depends(get_user_service),
     current_user: dict = Depends(get_current_user_from_token)
 ):
-    """Delete a learning goal for the authenticated user."""
-    if current_user["id"] != auth_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this learning goal")
+    """
+    Delete a learning goal for the authenticated user.
     
-    # Ensure the auth user reference exists
-    await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, db)
-    
-    deleted_goal = await crud.learning_goal.delete_learning_goal(db, goal_id, auth_user_id)
-    if not deleted_goal:
-        raise HTTPException(status_code=404, detail="Learning goal not found")
-    
+    Args:
+        auth_user_id (int): The ID of the user in the auth-service.
+        goal_id (int): The ID of the learning goal to delete.
+        user_service (UserService): The user service instance.
+        current_user (dict): The current authenticated user.
+        
+    Returns:
+        dict: A confirmation that the learning goal was deleted.
+        
+    Raises:
+        HTTPException: If the user is not authorized to delete this learning goal (403) or if the learning goal is not found (404).
+    """
+    await user_service.delete_learning_goal(auth_user_id, goal_id, current_user)
     return {"ok": True}

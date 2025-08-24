@@ -11,3 +11,4 @@ pytest-asyncio
 aiosqlite
 pydantic-settings
 aiormq
+python-jose[cryptography]

@@ -1,0 +1,313 @@
+openapi: 3.0.3
+info:
+  title: User Service API
+  description: A microservice to manage user profiles, badges, and learning goals.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:8001
+    description: Development server
+
+paths:
+  /users/me:
+    get:
+      summary: Get current user's profile
+      description: Get the current user's profile from auth-service.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Unauthorized
+
+  /users/{auth_user_id}:
+    get:
+      summary: Get user's profile
+      description: Get a user's profile by auth-service user ID.
+      parameters:
+        - in: path
+          name: auth_user_id
+          schema:
+            type: integer
+          required: true
+          description: The user ID from the auth-service.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '404':
+          description: User not found
+
+  /users/{auth_user_id}/badges:
+    get:
+      summary: Get user's badges
+      description: Retrieve all badges earned by a user.
+      parameters:
+        - in: path
+          name: auth_user_id
+          schema:
+            type: integer
+          required: true
+          description: The user ID from the auth-service.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Badge'
+    post:
+      summary: Create a new badge
+      description: Creates a new badge for the authenticated user.
+      parameters:
+        - in: path
+          name: auth_user_id
+          schema:
+            type: integer
+          required: true
+          description: The user ID from the auth-service.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BadgeCreate'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Badge'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /users/{auth_user_id}/goals:
+    get:
+      summary: Get user's learning goals
+      description: Retrieve all learning goals for a user.
+      parameters:
+        - in: path
+          name: auth_user_id
+          schema:
+            type: integer
+          required: true
+          description: The user ID from the auth-service.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LearningGoal'
+    post:
+      summary: Create a new learning goal
+      description: Create a new learning goal for the authenticated user.
+      parameters:
+        - in: path
+          name: auth_user_id
+          schema:
+            type: integer
+          required: true
+          description: The user ID from the auth-service.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LearningGoalCreate'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningGoal'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /users/{auth_user_id}/goals/{goal_id}:
+    put:
+      summary: Update a learning goal
+      description: Update a learning goal for the authenticated user.
+      parameters:
+        - in: path
+          name: auth_user_id
+          schema:
+            type: integer
+          required: true
+          description: The user ID from the auth-service.
+        - in: path
+          name: goal_id
+          schema:
+            type: integer
+          required: true
+          description: The ID of the learning goal.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LearningGoalUpdate'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningGoal'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Learning goal not found
+    delete:
+      summary: Delete a learning goal
+      description: Delete a learning goal for the authenticated user.
+      parameters:
+        - in: path
+          name: auth_user_id
+          schema:
+            type: integer
+          required: true
+          description: The user ID from the auth-service.
+        - in: path
+          name: goal_id
+          schema:
+            type: integer
+          required: true
+          description: The ID of the learning goal.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Learning goal not found
+
+components:
+  schemas:
+    Badge:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        icon_url:
+          type: string
+        date_achieved:
+          type: string
+          format: date-time
+        owner_id:
+          type: integer
+    BadgeCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        icon_url:
+          type: string
+    LearningGoal:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        streak_count:
+          type: integer
+        owner_id:
+          type: integer
+    LearningGoalCreate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        streak_count:
+          type: integer
+    LearningGoalUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        streak_count:
+          type: integer
+    UserProfileResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        bio:
+          type: string
+        skills:
+          type: string
+        badges:
+          type: array
+          items:
+            $ref: '#/components/schemas/Badge'
+        learning_goals:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningGoal'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

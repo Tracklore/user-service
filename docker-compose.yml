@@ -1,55 +1,13 @@
-version: '3.8'
-
 services:
-  auth-service:
-    build: ../auth-service
-    ports:
-      - "8001:8000"
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://testuser:testpass@db:5432/testdb
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
-    depends_on:
-      - db
-      - rabbitmq
-    volumes:
-      - ../auth-service:/app
-
   user-service:
-    build: .
+    build:
+      context: ..
+      dockerfile: user-service/Dockerfile
     ports:
-      - "8000:8000"
+      - "8002:8000"  # Using port 8002 to avoid conflict with existing services
     environment:
       - DATABASE_URL=sqlite+aiosqlite:///./test.db
-      - AUTH_SERVICE_URL=http://auth-service:8000
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
-    depends_on:
-      - auth-service
-      - rabbitmq
+      - AUTH_SERVICE_URL=http://host.docker.internal:8001  # Assuming auth-service runs on this URL
+      - RABBITMQ_URL=amqp://guest:guest@host.docker.internal:5672/  # Assuming RabbitMQ runs on this URL
     volumes:
       - .:/app
-
-  db:
-    image: postgres:13
-    environment:
-      POSTGRES_USER: testuser
-      POSTGRES_PASSWORD: testpass
-      POSTGRES_DB: testdb
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-
-volumes:
-  postgres_data:
-  rabbitmq_data:
