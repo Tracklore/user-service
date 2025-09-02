@@ -69,3 +69,56 @@ This will start the user-service, auth-service, database, and RabbitMQ in separa
 
 ## Testing
 A simple health check test is included to verify the service is running correctly.
+
+## Environment Variables
+The service requires several environment variables to be set. Copy the `.env.example` file to `.env` and configure the values appropriately:
+
+```bash
+cp .env.example .env
+```
+
+Key environment variables:
+- `DATABASE_URL`: Database connection string
+- `SECRET_KEY`: Secret key for JWT token signing (must be unique and secure in production)
+- `RABBITMQ_URL`: Connection string for RabbitMQ message queue
+
+### Generating Secure Secrets
+For production environments, generate secure secret keys using one of these methods:
+
+1. Using OpenSSL:
+   ```bash
+   openssl rand -hex 32
+   ```
+
+2. Using Python:
+   ```python
+   import secrets
+   print(secrets.token_hex(32))
+   ```
+
+3. Using the provided script:
+   ```bash
+   python generate_secrets.py
+   ```
+
+   You can also specify a custom length:
+   ```bash
+   python generate_secrets.py --length 64
+   ```
+
+### Security Best Practices
+1. Never commit `.env` files to version control
+2. Use different secret keys for different environments
+3. Rotate secrets periodically
+4. Use a secrets management system (like HashiCorp Vault or AWS Secrets Manager) in production
+5. Ensure environment variables are properly secured in your deployment environment
+
+## Database Connection Management
+
+The application uses SQLAlchemy's connection pooling to efficiently manage database connections. For details on best practices for database connection management, see [DATABASE_CONNECTION_BEST_PRACTICES.md](DATABASE_CONNECTION_BEST_PRACTICES.md).
+
+Key environment variables for connection pooling:
+- `DATABASE_POOL_SIZE`: The number of connections to maintain in the pool (default: 20)
+- `DATABASE_MAX_OVERFLOW`: The maximum number of connections that can be created beyond the pool size (default: 30)
+- `DATABASE_POOL_TIMEOUT`: The number of seconds to wait before giving up on getting a connection from the pool (default: 30)
+- `DATABASE_POOL_RECYCLE`: The number of seconds after which to recreate database connections (default: 3600)
