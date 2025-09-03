@@ -1,9 +1,9 @@
 # User Service
 
 ## Overview
-The user-service is a microservice responsible for managing all user-related data beyond core authentication. It provides functionality for user profiles, activity tracking, gamification (badges), and the learning tracker. It relies on the auth-service to identify the authenticated user via a JWT token.
+The user-service is a microservice responsible for managing all user-related data including authentication, profiles, activity tracking, gamification (badges), and the learning tracker.
 
-In the new microservice architecture, the user-service no longer manages user authentication data. Instead, it maintains references to users managed by the auth-service and stores additional user profile data such as badges and learning goals.
+In the updated architecture, the user-service manages user authentication data directly rather than relying on an external auth-service.
 
 ## API Endpoints
 All endpoints are prefixed with `/users`.
@@ -11,18 +11,31 @@ All endpoints are prefixed with `/users`.
 | Endpoint | Method | Description | Authentication |
 |----------|--------|-------------|----------------|
 | `/me` | GET | Retrieves the authenticated user's profile. | Required |
-| `/{auth_user_id}` | GET | Retrieves a specific user's public profile. | None |
-| `/{auth_user_id}/badges` | GET | Retrieves all badges earned by a user. | None |
-| `/{auth_user_id}/badges` | POST | Creates a new badge for the user. | Required (for auth_user_id matching authenticated user) |
-| `/{auth_user_id}/goals` | GET | Retrieves all learning goals for a user. | None |
-| `/{auth_user_id}/goals` | POST | Creates a new learning goal for the user. | Required (for auth_user_id matching authenticated user) |
-| `/{auth_user_id}/goals/{goal_id}` | PUT | Updates a specific learning goal. | Required (for auth_user_id matching authenticated user) |
-| `/{auth_user_id}/goals/{goal_id}` | DELETE | Deletes a specific learning goal. | Required (for auth_user_id matching authenticated user) |
+| `/{user_id}` | GET | Retrieves a specific user's public profile. | None |
+| `/{user_id}/badges` | GET | Retrieves all badges earned by a user. | None |
+| `/{user_id}/badges` | POST | Creates a new badge for the user. | Required (for user_id matching authenticated user) |
+| `/{user_id}/goals` | GET | Retrieves all learning goals for a user. | None |
+| `/{user_id}/goals` | POST | Creates a new learning goal for the user. | Required (for user_id matching authenticated user) |
+| `/{user_id}/goals/{goal_id}` | PUT | Updates a specific learning goal. | Required (for user_id matching authenticated user) |
+| `/{user_id}/goals/{goal_id}` | DELETE | Deletes a specific learning goal. | Required (for user_id matching authenticated user) |
+| `/` | POST | Creates a new user. | None |
+| `/{user_id}` | PUT | Updates a user's profile. | Required (for user_id matching authenticated user) |
+| `/{user_id}` | DELETE | Deletes a user. | Required (for user_id matching authenticated user) |
 
 ## Data Models & Schemas
 
-### AuthUserReference
-A reference to a user managed by the auth-service. This model maintains referential integrity while keeping services separate.
+### User
+A model for user data with the following fields:
+- `id`: UUID (Primary Key)
+- `username`: VARCHAR(50) UNIQUE NOT NULL
+- `email`: VARCHAR(100) UNIQUE NOT NULL
+- `password_hash`: TEXT NOT NULL
+- `display_name`: VARCHAR(100)
+- `bio`: TEXT
+- `avatar_url`: TEXT
+- `location`: VARCHAR(100)
+- `created_at`: TIMESTAMP DEFAULT NOW()
+- `updated_at`: TIMESTAMP DEFAULT NOW()
 
 ### Badge
 A schema for a badge object, including name, description, icon_url, and the date_achieved.
@@ -32,32 +45,22 @@ A schema for a user's learning goal, containing a title, description, status (e.
 
 ## Core Logic
 
-### Microservice Architecture
-The user-service now strictly follows microservice principles:
-1. **Separation of Concerns**: Authentication data is managed entirely by the auth-service
-2. **Data References**: The user-service maintains references to auth-service users via foreign keys
-3. **Service Communication**: The user-service communicates with the auth-service via HTTP requests to fetch user data when needed
-4. **Event-Driven Communication**: The user-service consumes "UserCreated" events from a message queue to create auth user references
-
-### Profile Management
-The service no longer performs CRUD operations on user profile fields in a shared users table. Instead, it:
-1. Fetches user authentication data from the auth-service
-2. Manages additional profile data (badges, learning goals) in its own database
-3. Links this data to auth-service users via foreign key references
+### User Management
+The service now manages user authentication data directly:
+1. **User Registration**: Users can register with username, email, and password
+2. **User Authentication**: JWT-based authentication
+3. **Profile Management**: Users can update their profile information
+4. **Data References**: Badges and learning goals are linked to users via foreign keys
 
 ### Gamification & Learning
-The service uses separate database tables to store badges and learning goals. These tables have a foreign key relationship with the `auth_users` table to link the data to a specific user managed by the auth-service.
-
-## Message Queue Integration
-The user-service now consumes "UserCreated" events from a RabbitMQ message queue. When the auth-service creates a new user, it publishes an event to the queue. The user-service consumes this event and automatically creates an AuthUserReference record to maintain referential integrity.
-
-This approach eliminates the need for shared databases between services and provides a scalable, decoupled communication mechanism.
+The service uses separate database tables to store badges and learning goals. These tables have a foreign key relationship with the `users` table to link the data to a specific user.
 
 ## Database Migration
-To migrate to the new microservice architecture:
-1. Run the migration script: `python apply_migrations.py`
-2. This will create the new `auth_users` reference table and update foreign key relationships
-3. Existing data will need to be migrated to the new schema
+To migrate to the new architecture:
+1. Run the migration scripts in order:
+   - First migration updates the existing schema
+   - Second migration creates the new users table
+2. Existing data will need to be migrated to the new schema
 
 ## Running the Service
 To run the service:
@@ -65,7 +68,7 @@ To run the service:
 docker-compose up
 ```
 
-This will start the user-service, auth-service, database, and RabbitMQ in separate containers.
+This will start the user-service, database, and RabbitMQ in separate containers.
 
 ## Testing
 A simple health check test is included to verify the service is running correctly.

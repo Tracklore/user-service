@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+# Add the parent directory to the Python path to ensure shared_libs can be found
+parent_path = Path(__file__).resolve().parent.parent
+sys.path.append(str(parent_path))
+
 import pytest
 import pytest_asyncio
 import asyncio
@@ -13,7 +20,7 @@ import os
 # Use a test database URL
 # For testing, we'll use SQLite for simplicity
 # If DATABASE_URL is not set, default to an in-memory SQLite database
-TEST_DATABASE_URL = settings.database_url.replace("sqlite+aiosqlite", "sqlite") or "sqlite:///./test.db"
+TEST_DATABASE_URL = settings.DATABASE_URL.replace("sqlite+aiosqlite", "sqlite") or "sqlite:///./test.db"
 
 # Create a new synchronous engine for testing
 test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
