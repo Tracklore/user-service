@@ -107,18 +107,18 @@ class MessageQueueConsumer:
             try:
                 user_id = event_data.get("user_id")
                 username = event_data.get("username")
-                email = event_data.get("email")
                 
                 logger.info(f"Processing UserCreated event for user {user_id} ({username})")
                 
-                # Check if we already have a reference to this user
+                # Check if we already have an auth user reference with this ID
                 result = await db.execute(
                     AuthUserReference.__table__.select().where(AuthUserReference.id == user_id)
                 )
-                existing_ref = await result.fetchone()
+                existing_auth_user = await result.fetchone()
                 
-                # If we don't have a reference, create one
-                if not existing_ref:
+                # If we don't have an auth user reference, create one
+                if not existing_auth_user:
+                    # Create a new auth user reference
                     auth_user_ref = AuthUserReference(id=user_id)
                     db.add(auth_user_ref)
                     await db.commit()
