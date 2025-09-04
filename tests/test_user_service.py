@@ -315,13 +315,13 @@ async def test_update_learning_goal_authorized(user_service):
                             streak_count=10
                         )
                     
-                    # Call the function
-                    result = await user_service.update_learning_goal(1, 1, learning_goal_update, current_user)
-                    
-                    # Verify the results
-                    assert result.id == 1
-                    assert result.title == "Updated Goal"
-                    assert result.status == "completed"
+                        # Call the function
+                        result = await user_service.update_learning_goal(1, 1, learning_goal_update, current_user)
+                        
+                        # Verify the results
+                        assert result.id == 1
+                        assert result.title == "Updated Goal"
+                        assert result.status == "completed"
 
 
 @pytest.mark.asyncio
