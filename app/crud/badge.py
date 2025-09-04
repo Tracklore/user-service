@@ -24,7 +24,7 @@ async def get_badges_count_by_user(db: AsyncSession, user_id: int) -> int:
             select(func.count(Badge.id))
             .filter(Badge.user_id == user_id)
         )
-        return result.scalar_one()
+        return await result.scalar_one()
     except Exception as e:
         raise Exception(f"Error counting badges for user {user_id}: {str(e)}")
 

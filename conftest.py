@@ -1,14 +1,14 @@
 import sys
 from pathlib import Path
 
-# Add the parent directory to the Python path to ensure shared_libs can be found
-parent_path = Path(__file__).resolve().parent.parent
-sys.path.append(str(parent_path))
+# Add the shared-libs directory to the Python path
+shared_libs_path = Path(__file__).resolve().parent.parent / "shared_libs"
+sys.path.append(str(shared_libs_path))
 
 import pytest
 import pytest_asyncio
 import asyncio
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.db.database import Base, get_db, engine
@@ -20,11 +20,11 @@ import os
 # Use a test database URL
 # For testing, we'll use SQLite for simplicity
 # If DATABASE_URL is not set, default to an in-memory SQLite database
-TEST_DATABASE_URL = settings.DATABASE_URL.replace("sqlite+aiosqlite", "sqlite") or "sqlite:///./test.db"
+TEST_DATABASE_URL = settings.database_url or "sqlite+aiosqlite:///./test.db"
 
-# Create a new synchronous engine for testing
-test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+# Create a new asynchronous engine for testing
+test_engine = create_async_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine, class_=AsyncSession)
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -36,12 +36,13 @@ def event_loop():
 @pytest_asyncio.fixture(scope="function")
 async def client():
     # Create tables
-    Base.metadata.create_all(bind=test_engine)
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     
     # Create a new session for the test
     session = TestingSessionLocal()
     try:
-        def override_get_db():
+        async def override_get_db():
             yield session
         
         # Override the get_db dependency
@@ -54,7 +55,8 @@ async def client():
         # Remove the override after the test
         app.dependency_overrides.clear()
     finally:
-        session.close()
+        await session.close()
     
     # Drop tables after the test
-    Base.metadata.drop_all(bind=test_engine)
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)

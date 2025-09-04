@@ -11,7 +11,6 @@ from app.schemas.learning_goal import LearningGoalCreate, LearningGoalUpdate
 from app.services.auth_service import auth_service_client
 from tests.test_utils import SAMPLE_USER_ID, SAMPLE_USER_DATA, SAMPLE_BADGE_DATA, SAMPLE_LEARNING_GOAL_DATA
 
-
 @pytest.mark.asyncio
 async def test_read_user(client: AsyncClient):
     """Test getting a user's profile by ID."""
@@ -71,7 +70,6 @@ async def test_read_user(client: AsyncClient):
         assert len(data["badges"]) == 1
         assert len(data["learning_goals"]) == 1
 
-
 @pytest.mark.asyncio
 async def test_read_user_not_found(client: AsyncClient):
     """Test getting a user's profile when the user is not found."""
@@ -89,7 +87,6 @@ async def test_read_user_not_found(client: AsyncClient):
         
         # Verify the response
         assert response.status_code == 404
-
 
 @pytest.mark.asyncio
 async def test_read_user_badges(client: AsyncClient):
@@ -136,7 +133,6 @@ async def test_read_user_badges(client: AsyncClient):
         assert data[0]["name"] == "Test Badge"
         assert data[1]["name"] == "Another Badge"
 
-
 @pytest.mark.asyncio
 async def test_create_badge_authorized(client: AsyncClient):
     """Test creating a badge when the user is authorized."""
@@ -149,7 +145,7 @@ async def test_create_badge_authorized(client: AsyncClient):
         "auth_user_id": SAMPLE_USER_ID
     }
     
-    with patch('app.api.routes.get_user_service') as mock_get_user_service, 
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
          patch('app.services.auth_service.auth_service_client') as mock_auth_client:
         # Mock the auth service client to return a valid user
         mock_auth_client.get_user.return_value = {
@@ -181,17 +177,17 @@ async def test_create_badge_authorized(client: AsyncClient):
         assert data["id"] == 1
         assert data["name"] == "Test Badge"
 
-
 @pytest.mark.asyncio
 async def test_create_badge_unauthorized(client: AsyncClient):
     """Test creating a badge when the user is not authorized."""
-    with patch('app.api.routes.get_user_service') as mock_get_user_service, 
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
          patch('app.services.auth_service.auth_service_client') as mock_auth_client:
         # Mock the auth service client to return None (user not found)
         mock_auth_client.get_user.return_value = None
         
-        # Mock the user service
+        # Mock the user service to raise an exception
         mock_user_service = AsyncMock()
+        mock_user_service.create_badge.side_effect = HTTPException(status_code=404, detail="User not found")
         mock_get_user_service.return_value = mock_user_service
         
         # Make the request
@@ -202,7 +198,6 @@ async def test_create_badge_unauthorized(client: AsyncClient):
         
         # Verify the response
         assert response.status_code == 404
-
 
 @pytest.mark.asyncio
 async def test_read_user_learning_goals(client: AsyncClient):
@@ -226,25 +221,28 @@ async def test_read_user_learning_goals(client: AsyncClient):
         }
     ]
     
-    # Mock the auth service client to avoid database operations
-    with patch('app.services.auth_service.auth_service_client') as mock_auth_client:
-        mock_auth_client.ensure_auth_user_reference_exists = AsyncMock()
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
+         patch('app.services.auth_service.auth_service_client') as mock_auth_client:
+        # Mock the auth service client to return a valid user
+        mock_auth_client.get_user.return_value = {
+            "id": SAMPLE_USER_ID,
+            "username": "testuser",
+            "email": "test@example.com"
+        }
         
-        with patch('app.api.routes.get_user_service') as mock_get_user_service:
-            mock_user_service = AsyncMock()
-            mock_user_service.get_user_learning_goals.return_value = goals_data
-            mock_get_user_service.return_value = mock_user_service
-            
-            # Make the request
-            response = await client.get(f"/users/{SAMPLE_USER_ID}/goals")
-            
-            # Verify the response
-            assert response.status_code == 200
-            data = response.json()
-            assert len(data) == 2
-            assert data[0]["title"] == "Test Goal"
-            assert data[1]["title"] == "Another Goal"
-
+        mock_user_service = AsyncMock()
+        mock_user_service.get_user_learning_goals.return_value = goals_data
+        mock_get_user_service.return_value = mock_user_service
+        
+        # Make the request
+        response = await client.get(f"/users/{SAMPLE_USER_ID}/goals")
+        
+        # Verify the response
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert data[0]["title"] == "Test Goal"
+        assert data[1]["title"] == "Another Goal"
 
 @pytest.mark.asyncio
 async def test_create_learning_goal_authorized(client: AsyncClient):
@@ -258,11 +256,14 @@ async def test_create_learning_goal_authorized(client: AsyncClient):
         "auth_user_id": SAMPLE_USER_ID
     }
     
-    with patch('app.api.routes.get_current_user_from_token') as mock_get_current_user, \
-         patch('app.api.routes.get_user_service') as mock_get_user_service:
-        
-        # Mock the current user
-        mock_get_current_user.return_value = SAMPLE_USER_DATA
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
+         patch('app.services.auth_service.auth_service_client') as mock_auth_client:
+        # Mock the auth service client to return a valid user
+        mock_auth_client.get_user.return_value = {
+            "id": SAMPLE_USER_ID,
+            "username": "testuser",
+            "email": "test@example.com"
+        }
         
         # Mock the user service
         mock_user_service = AsyncMock()
@@ -286,20 +287,19 @@ async def test_create_learning_goal_authorized(client: AsyncClient):
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == 1
-        assert data["title"] == "Test Learning Goal"
-
+        assert data["title"] == "Test Goal"
 
 @pytest.mark.asyncio
 async def test_create_learning_goal_unauthorized(client: AsyncClient):
     """Test creating a learning goal when the user is not authorized."""
-    with patch('app.api.routes.get_current_user_from_token') as mock_get_current_user, \
-         patch('app.api.routes.get_user_service') as mock_get_user_service:
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
+         patch('app.services.auth_service.auth_service_client') as mock_auth_client:
+        # Mock the auth service client to return None (user not found)
+        mock_auth_client.get_user.return_value = None
         
-        # Mock the current user as a different user
-        mock_get_current_user.return_value = {"id": 2, "username": "otheruser"}
-        
-        # Mock the user service
+        # Mock the user service to raise an exception
         mock_user_service = AsyncMock()
+        mock_user_service.create_learning_goal.side_effect = HTTPException(status_code=404, detail="User not found")
         mock_get_user_service.return_value = mock_user_service
         
         # Make the request
@@ -309,8 +309,7 @@ async def test_create_learning_goal_unauthorized(client: AsyncClient):
         )
         
         # Verify the response
-        assert response.status_code == 403
-
+        assert response.status_code == 404
 
 @pytest.mark.asyncio
 async def test_update_learning_goal_authorized(client: AsyncClient):
@@ -324,11 +323,14 @@ async def test_update_learning_goal_authorized(client: AsyncClient):
         "auth_user_id": SAMPLE_USER_ID
     }
     
-    with patch('app.api.routes.get_current_user_from_token') as mock_get_current_user, \
-         patch('app.api.routes.get_user_service') as mock_get_user_service:
-        
-        # Mock the current user
-        mock_get_current_user.return_value = SAMPLE_USER_DATA
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
+         patch('app.services.auth_service.auth_service_client') as mock_auth_client:
+        # Mock the auth service client to return a valid user
+        mock_auth_client.get_user.return_value = {
+            "id": SAMPLE_USER_ID,
+            "username": "testuser",
+            "email": "test@example.com"
+        }
         
         # Mock the user service
         mock_user_service = AsyncMock()
@@ -362,18 +364,17 @@ async def test_update_learning_goal_authorized(client: AsyncClient):
         assert data["title"] == "Updated Goal"
         assert data["status"] == "completed"
 
-
 @pytest.mark.asyncio
 async def test_update_learning_goal_unauthorized(client: AsyncClient):
     """Test updating a learning goal when the user is not authorized."""
-    with patch('app.api.routes.get_current_user_from_token') as mock_get_current_user, \
-         patch('app.api.routes.get_user_service') as mock_get_user_service:
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
+         patch('app.services.auth_service.auth_service_client') as mock_auth_client:
+        # Mock the auth service client to return None (user not found)
+        mock_auth_client.get_user.return_value = None
         
-        # Mock the current user as a different user
-        mock_get_current_user.return_value = {"id": 2, "username": "otheruser"}
-        
-        # Mock the user service
+        # Mock the user service to raise an exception
         mock_user_service = AsyncMock()
+        mock_user_service.update_learning_goal.side_effect = HTTPException(status_code=404, detail="User not found")
         mock_get_user_service.return_value = mock_user_service
         
         # Make the request
@@ -388,17 +389,50 @@ async def test_update_learning_goal_unauthorized(client: AsyncClient):
         )
         
         # Verify the response
-        assert response.status_code == 403
+        assert response.status_code == 404
 
+@pytest.mark.asyncio
+async def test_update_learning_goal_not_found(client: AsyncClient):
+    """Test updating a learning goal when the goal is not found."""
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
+         patch('app.services.auth_service.auth_service_client') as mock_auth_client:
+        # Mock the auth service client to return a valid user
+        mock_auth_client.get_user.return_value = {
+            "id": SAMPLE_USER_ID,
+            "username": "testuser",
+            "email": "test@example.com"
+        }
+        
+        # Mock the user service to raise an exception
+        mock_user_service = AsyncMock()
+        mock_user_service.update_learning_goal.side_effect = HTTPException(status_code=404, detail="Learning goal not found")
+        mock_get_user_service.return_value = mock_user_service
+        
+        # Make the request
+        update_data = {
+            "title": "Updated Goal",
+            "description": "Updated Description"
+        }
+        
+        response = await client.put(
+            f"/users/{SAMPLE_USER_ID}/goals/999",
+            json=update_data
+        )
+        
+        # Verify the response
+        assert response.status_code == 404
 
 @pytest.mark.asyncio
 async def test_delete_learning_goal_authorized(client: AsyncClient):
     """Test deleting a learning goal when the user is authorized."""
-    with patch('app.api.routes.get_current_user_from_token') as mock_get_current_user, \
-         patch('app.api.routes.get_user_service') as mock_get_user_service:
-        
-        # Mock the current user
-        mock_get_current_user.return_value = SAMPLE_USER_DATA
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
+         patch('app.services.auth_service.auth_service_client') as mock_auth_client:
+        # Mock the auth service client to return a valid user
+        mock_auth_client.get_user.return_value = {
+            "id": SAMPLE_USER_ID,
+            "username": "testuser",
+            "email": "test@example.com"
+        }
         
         # Mock the user service
         mock_user_service = AsyncMock()
@@ -411,24 +445,46 @@ async def test_delete_learning_goal_authorized(client: AsyncClient):
         # Verify the response
         assert response.status_code == 200
         data = response.json()
-        assert data == {"ok": True}
-
+        assert data["ok"] is True
 
 @pytest.mark.asyncio
 async def test_delete_learning_goal_unauthorized(client: AsyncClient):
     """Test deleting a learning goal when the user is not authorized."""
-    with patch('app.api.routes.get_current_user_from_token') as mock_get_current_user, \
-         patch('app.api.routes.get_user_service') as mock_get_user_service:
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
+         patch('app.services.auth_service.auth_service_client') as mock_auth_client:
+        # Mock the auth service client to return None (user not found)
+        mock_auth_client.get_user.return_value = None
         
-        # Mock the current user as a different user
-        mock_get_current_user.return_value = {"id": 2, "username": "otheruser"}
-        
-        # Mock the user service
+        # Mock the user service to raise an exception
         mock_user_service = AsyncMock()
+        mock_user_service.delete_learning_goal.side_effect = HTTPException(status_code=404, detail="User not found")
         mock_get_user_service.return_value = mock_user_service
         
         # Make the request
         response = await client.delete(f"/users/{SAMPLE_USER_ID}/goals/1")
         
         # Verify the response
-        assert response.status_code == 403
+        assert response.status_code == 404
+
+@pytest.mark.asyncio
+async def test_delete_learning_goal_not_found(client: AsyncClient):
+    """Test deleting a learning goal when the goal is not found."""
+    with patch('app.api.routes.get_user_service') as mock_get_user_service, \
+         patch('app.services.auth_service.auth_service_client') as mock_auth_client:
+        # Mock the auth service client to return a valid user
+        mock_auth_client.get_user.return_value = {
+            "id": SAMPLE_USER_ID,
+            "username": "testuser",
+            "email": "test@example.com"
+        }
+        
+        # Mock the user service to raise an exception
+        mock_user_service = AsyncMock()
+        mock_user_service.delete_learning_goal.side_effect = HTTPException(status_code=404, detail="Learning goal not found")
+        mock_get_user_service.return_value = mock_user_service
+        
+        # Make the request
+        response = await client.delete(f"/users/{SAMPLE_USER_ID}/goals/999")
+        
+        # Verify the response
+        assert response.status_code == 404

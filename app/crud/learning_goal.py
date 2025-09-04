@@ -24,7 +24,7 @@ async def get_learning_goals_count_by_user(db: AsyncSession, user_id: int) -> in
             select(func.count(LearningGoal.id))
             .filter(LearningGoal.user_id == user_id)
         )
-        return result.scalar_one()
+        return await result.scalar_one()
     except Exception as e:
         raise Exception(f"Error counting learning goals for user {user_id}: {str(e)}")
 
