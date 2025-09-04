@@ -25,7 +25,7 @@ async def read_user(auth_user_id: int, user_service: UserService = Depends(get_u
     Get a user's profile by auth-service user ID.
     
     Args:
-        auth_user_id (int): The ID of the user in the auth-service.
+        auth_user_id (int): The ID of the user.
         
     Returns:
         dict: The user's profile data including badges and learning goals.
@@ -41,7 +41,7 @@ async def read_user_badges(auth_user_id: int, user_service: UserService = Depend
     Retrieve all badges earned by a user.
     
     Args:
-        auth_user_id (int): The ID of the user in the auth-service.
+        auth_user_id (int): The ID of the user.
         
     Returns:
         List[schemas.Badge]: A list of badges earned by the user.
@@ -58,7 +58,7 @@ async def create_badge(
     Creates a new badge for a user.
     
     Args:
-        auth_user_id (int): The ID of the user in the auth-service.
+        auth_user_id (int): The ID of the user.
         badge (schemas.BadgeCreate): The badge data to create.
         user_service (UserService): The user service instance.
         
@@ -76,7 +76,7 @@ async def read_user_learning_goals(auth_user_id: int, user_service: UserService 
     Retrieve all learning goals for a user.
     
     Args:
-        auth_user_id (int): The ID of the user in the auth-service.
+        auth_user_id (int): The ID of the user.
         
     Returns:
         List[schemas.LearningGoal]: A list of learning goals for the user.
@@ -93,7 +93,7 @@ async def create_learning_goal(
     Create a new learning goal for a user.
     
     Args:
-        auth_user_id (int): The ID of the user in the auth-service.
+        auth_user_id (int): The ID of the user.
         learning_goal (schemas.LearningGoalCreate): The learning goal data to create.
         user_service (UserService): The user service instance.
         
@@ -116,7 +116,7 @@ async def update_learning_goal(
     Update a learning goal for a user.
     
     Args:
-        auth_user_id (int): The ID of the user in the auth-service.
+        auth_user_id (int): The ID of the user.
         goal_id (int): The ID of the learning goal to update.
         learning_goal (schemas.LearningGoalUpdate): The learning goal data to update.
         user_service (UserService): The user service instance.
@@ -139,7 +139,7 @@ async def delete_learning_goal(
     Delete a learning goal for a user.
     
     Args:
-        auth_user_id (int): The ID of the user in the auth-service.
+        auth_user_id (int): The ID of the user.
         goal_id (int): The ID of the learning goal to delete.
         user_service (UserService): The user service instance.
         
