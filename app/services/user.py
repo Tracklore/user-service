@@ -121,8 +121,8 @@ class UserService:
         # Get badges from database
         badges = await crud.badge.get_badges_by_user(self.db, auth_user_id=auth_user_id)
         
-        # Business logic: Sort badges by achievement date (newest first), handling None values
-        badges.sort(key=lambda x: x.date_achieved or datetime.min, reverse=True)
+        # Business logic: Sort badges by ID (newest first, assuming higher ID means newer)
+        badges.sort(key=lambda x: x.id, reverse=True)
         
         return badges
 
