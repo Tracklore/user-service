@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud, models, schemas
 from app.db.database import get_db
+from typing import List, Optional
 from app.services.auth_service import auth_service_client
 from typing import List
 from app.core.settings import settings
@@ -33,9 +34,13 @@ class UserService:
         
         # Combine the data
         user_profile = {
-            "id": user_data["id"],
-            "username": user_data["username"],
-            "email": user_data.get("email"),
+            "id": user_data.id,
+            "username": auth_user_data["username"],
+            "email": auth_user_data["email"],
+            "display_name": user_data.display_name,
+            "bio": user_data.bio,
+            "avatar_url": user_data.avatar_url,
+            "location": user_data.location,
             "badges": badges,
             "learning_goals": learning_goals,
             "statistics": {

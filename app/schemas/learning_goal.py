@@ -18,7 +18,7 @@ class LearningGoalUpdate(BaseModel):
 
 class LearningGoal(LearningGoalBase):
     id: int
-    auth_user_id: int
+    user_id: int
 
     class Config:
         from_attributes = True

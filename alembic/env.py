@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Add the Tracklore directory to the Python path
+tracklore_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(tracklore_dir)
+
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config

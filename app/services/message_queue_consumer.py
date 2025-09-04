@@ -5,7 +5,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import settings
 from app.models.auth_user_reference import AuthUserReference
-from app.db.database import engine
+from app.db.database import SessionLocal
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -102,33 +102,35 @@ class MessageQueueConsumer:
     
     async def handle_user_created_event(self, event_data):
         """Handle UserCreated events by creating an auth user reference."""
-        try:
-            user_id = event_data.get("user_id")
-            username = event_data.get("username")
-            email = event_data.get("email")
-            
-            logger.info(f"Processing UserCreated event for user {user_id} ({username})")
-            
-            # Create a database session
-            async with AsyncSession(engine) as db:
-                # Check if we already have a reference to this user
+        # Create a database session using the session factory
+        async with SessionLocal() as db:
+            try:
+                user_id = event_data.get("user_id")
+                username = event_data.get("username")
+                
+                logger.info(f"Processing UserCreated event for user {user_id} ({username})")
+                
+                # Check if we already have an auth user reference with this ID
                 result = await db.execute(
                     AuthUserReference.__table__.select().where(AuthUserReference.id == user_id)
                 )
-                existing_ref = await result.fetchone()
+                existing_auth_user = await result.fetchone()
                 
-                # If we don't have a reference, create one
-                if not existing_ref:
+                # If we don't have an auth user reference, create one
+                if not existing_auth_user:
+                    # Create a new auth user reference
                     auth_user_ref = AuthUserReference(id=user_id)
                     db.add(auth_user_ref)
                     await db.commit()
                     logger.info(f"Created auth user reference for user {user_id}")
                 else:
                     logger.info(f"Auth user reference already exists for user {user_id}")
-        except Exception as e:
-            logger.error(f"Error handling UserCreated event: {e}")
-            # Re-raise the exception to trigger retry logic
-            raise
+            except Exception as e:
+                # Rollback the transaction in case of error
+                await db.rollback()
+                logger.error(f"Error handling UserCreated event: {e}")
+                # Re-raise the exception to trigger retry logic
+                raise
     
     async def stop_consuming(self):
         """Stop consuming messages."""
