@@ -12,7 +12,7 @@ class BadgeCreate(BadgeBase):
 class Badge(BadgeBase):
     id: int
     date_achieved: datetime
-    auth_user_id: int
+    user_id: int
 
     class Config:
         from_attributes = True

@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud, models, schemas
 from app.db.database import get_db
+from typing import List, Optional
 from app.services.auth_service import auth_service_client
 from typing import List
 from app.core.settings import settings
@@ -63,9 +64,13 @@ class UserService:
         
         # Combine the data
         user_profile = {
-            "id": user_data["id"],
+            "id": user_data.id,
             "username": user_data["username"],
-            "email": user_data.get("email"),
+            "email": user_data["email"],
+            "display_name": user_data.display_name,
+            "bio": user_data.bio,
+            "avatar_url": user_data.avatar_url,
+            "location": user_data.location,
             "badges": badges,
             "learning_goals": learning_goals,
             "statistics": {
@@ -172,7 +177,7 @@ class UserService:
         
         return goals
 
-    async def create_learning_goal(self, auth_user_id: int, learning_goal: schemas.LearningGoalCreate, current_user: dict = Depends(get_current_user_from_token)):
+    async def create_learning_goal(self, user_id: int, learning_goal: schemas.LearningGoalCreate):
         """Create a learning goal for a user."""
         # Business logic: Authorization check
         if current_user["id"] != auth_user_id:
@@ -207,7 +212,7 @@ class UserService:
         
         return created_goal
 
-    async def update_learning_goal(self, auth_user_id: int, goal_id: int, learning_goal: schemas.LearningGoalUpdate, current_user: dict = Depends(get_current_user_from_token)):
+    async def update_learning_goal(self, user_id: int, goal_id: int, learning_goal: schemas.LearningGoalUpdate):
         """Update a learning goal for a user."""
         # Business logic: Authorization check
         if current_user["id"] != auth_user_id:
@@ -255,7 +260,7 @@ class UserService:
         
         return await crud.learning_goal.get_learning_goal(self.db, goal_id=goal_id, auth_user_id=auth_user_id)
 
-    async def delete_learning_goal(self, auth_user_id: int, goal_id: int, current_user: dict = Depends(get_current_user_from_token)):
+    async def delete_learning_goal(self, user_id: int, goal_id: int):
         """Delete a learning goal for a user."""
         # Business logic: Authorization check
         if current_user["id"] != auth_user_id:
