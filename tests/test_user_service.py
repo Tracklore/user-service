@@ -113,12 +113,12 @@ async def test_get_user_badges(user_service):
             
             with patch.object(auth_service_client, 'ensure_auth_user_reference_exists') as mock_ensure:
                 # Mock the badge CRUD functions
-                with patch('app.services.user.crud.badge.get_badges_by_user') as mock_get_badges:
-                    mock_get_badges.return_value = asyncio.Future()
-                    mock_get_badges.return_value.set_result([
-                        Badge(id=1, name="Test Badge", description="Test Description", icon_url="http://example.com/icon.png", auth_user_id=1),
-                        Badge(id=2, name="Another Badge", description="Another Description", icon_url="http://example.com/icon2.png", auth_user_id=1)
-                    ])
+                mock_get_badges = AsyncMock()
+                mock_get_badges.return_value = [
+                    Badge(id=1, name="Test Badge", description="Test Description", icon_url="http://example.com/icon.png", auth_user_id=1),
+                    Badge(id=2, name="Another Badge", description="Another Description", icon_url="http://example.com/icon2.png", auth_user_id=1)
+                ]
+                with patch('app.services.user.crud.badge.get_badges_by_user', mock_get_badges):
                     
                     # Call the function
                     result = await user_service.get_user_badges(1)
@@ -194,12 +194,12 @@ async def test_get_user_learning_goals(user_service):
             
             with patch.object(auth_service_client, 'ensure_auth_user_reference_exists') as mock_ensure:
                 # Mock the learning goal CRUD functions
-                with patch('app.services.user.crud.learning_goal.get_learning_goals_by_user') as mock_get_goals:
-                    mock_get_goals.return_value = asyncio.Future()
-                    mock_get_goals.return_value.set_result([
-                        LearningGoal(id=1, title="Test Goal", description="Test Description", status="in-progress", streak_count=5, auth_user_id=1),
-                        LearningGoal(id=2, title="Another Goal", description="Another Description", status="completed", streak_count=10, auth_user_id=1)
-                    ])
+                mock_get_goals = AsyncMock()
+                mock_get_goals.return_value = [
+                    LearningGoal(id=1, title="Test Goal", description="Test Description", status="in-progress", streak_count=5, auth_user_id=1),
+                    LearningGoal(id=2, title="Another Goal", description="Another Description", status="completed", streak_count=10, auth_user_id=1)
+                ]
+                with patch('app.services.user.crud.learning_goal.get_learning_goals_by_user', mock_get_goals):
                     
                     # Call the function
                     result = await user_service.get_user_learning_goals(1)
