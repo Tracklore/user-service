@@ -302,18 +302,18 @@ async def test_update_learning_goal_authorized(user_service):
                     id=1,
                     title="Test Goal",
                     description="Test Description",
-                    status="in-progress",
+                    status="in_progress",  # Use underscore format
                     streak_count=5,
                     auth_user_id=1
                 )
                 with patch('app.services.user.crud.learning_goal.get_learning_goal', mock_get_learning_goal):
                     # Mock the learning goal update schema
-                    learning_goal_update = LearningGoalUpdate(
-                        title="Updated Goal",
-                        description="Updated Description",
-                        status="completed",
-                        streak_count=10
-                    )
+                        learning_goal_update = LearningGoalUpdate(
+                            title="Updated Goal",
+                            description="Updated Description",
+                            status="completed",  # This is correct
+                            streak_count=10
+                        )
                     
                     # Call the function
                     result = await user_service.update_learning_goal(1, 1, learning_goal_update, current_user)
@@ -403,7 +403,7 @@ async def test_delete_learning_goal_authorized(user_service):
                     id=1,
                     title="Test Goal",
                     description="Test Description",
-                    status="in-progress",
+                    status="in_progress",  # Use underscore format
                     streak_count=5,
                     auth_user_id=1
                 )
