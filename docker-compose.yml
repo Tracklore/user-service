@@ -1,13 +1,27 @@
+version: '3.8'
+
 services:
-  user-service:
-    build:
-      context: ..
-      dockerfile: user-service/Dockerfile
-    ports:
-      - "8002:8000"  # Using port 8002 to avoid conflict with existing services
+  db:
+    image: postgres:13
+    restart: always
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///./test.db
-      - AUTH_SERVICE_URL=http://host.docker.internal:8001  # Assuming auth-service runs on this URL
-      - RABBITMQ_URL=amqp://guest:guest@host.docker.internal:5672/  # Assuming RabbitMQ runs on this URL
+      POSTGRES_DB: tracklore_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
     volumes:
-      - .:/app
+      - postgres_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+volumes:
+  postgres_data:

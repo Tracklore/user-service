@@ -9,5 +9,5 @@ class LearningGoal(Base):
     description = Column(String)
     status = Column(String)
     streak_count = Column(Integer)
-    # Reference to auth-service user ID
-    auth_user_id = Column(Integer, ForeignKey("auth_users.id"))
+    # Reference to user ID in auth_users table
+    user_id = Column(Integer, ForeignKey("auth_users.id"))

@@ -2,8 +2,8 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud, models, schemas
 from app.db.database import get_db
-from app.services.auth_service import auth_service_client
 from typing import List
+from app.services.auth_service import auth_service_client
 from app.core.settings import settings
 
 class UserService:
