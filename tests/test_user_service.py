@@ -111,20 +111,22 @@ async def test_get_user_badges(user_service):
             mock_get_user.return_value = {"id": 1, "username": "testuser"}
             
             with patch.object(auth_service_client, 'ensure_auth_user_reference_exists') as mock_ensure:
-                # Mock the badge CRUD functions
-                with patch('app.services.user.crud.badge.get_badges_by_user') as mock_get_badges:
-                    mock_get_badges.return_value = [
-                        Badge(id=1, name="Test Badge", description="Test Description", icon_url="http://example.com/icon.png", auth_user_id=1),
-                        Badge(id=2, name="Another Badge", description="Another Description", icon_url="http://example.com/icon2.png", auth_user_id=1)
-                    ]
-                    
+                # Mock the database execute method to return a proper result
+                mock_result = AsyncMock()
+                mock_result.scalars().all.return_value = [
+                    Badge(id=1, name="Test Badge", description="Test Description", icon_url="http://example.com/icon.png", auth_user_id=1),
+                    Badge(id=2, name="Another Badge", description="Another Description", icon_url="http://example.com/icon2.png", auth_user_id=1)
+                ]
+                
+                with patch.object(user_service.db, 'execute', return_value=mock_result):
                     # Call the function
                     result = await user_service.get_user_badges(1)
                     
                     # Verify the results
                     assert len(result) == 2
-                    assert result[0].name == "Test Badge"
-                    assert result[1].name == "Another Badge"
+                    # Badges are sorted by ID in descending order, so ID 2 comes first
+                    assert result[0].name == "Another Badge"
+                    assert result[1].name == "Test Badge"
                     
                     # Verify that ensure_auth_user_reference_exists was called
                     mock_ensure.assert_called_once_with(1, user_service.db)
@@ -190,20 +192,22 @@ async def test_get_user_learning_goals(user_service):
             mock_get_user.return_value = {"id": 1, "username": "testuser"}
             
             with patch.object(auth_service_client, 'ensure_auth_user_reference_exists') as mock_ensure:
-                # Mock the learning goal CRUD functions
-                with patch('app.services.user.crud.learning_goal.get_learning_goals_by_user') as mock_get_goals:
-                    mock_get_goals.return_value = [
-                        LearningGoal(id=1, title="Test Goal", description="Test Description", status="in-progress", streak_count=5, auth_user_id=1),
-                        LearningGoal(id=2, title="Another Goal", description="Another Description", status="completed", streak_count=10, auth_user_id=1)
-                    ]
-                    
+                # Mock the database execute method to return a proper result
+                mock_result = AsyncMock()
+                mock_result.scalars().all.return_value = [
+                    LearningGoal(id=1, title="Test Goal", description="Test Description", status="in-progress", streak_count=5, auth_user_id=1),
+                    LearningGoal(id=2, title="Another Goal", description="Another Description", status="completed", streak_count=10, auth_user_id=1)
+                ]
+                
+                with patch.object(user_service.db, 'execute', return_value=mock_result):
                     # Call the function
                     result = await user_service.get_user_learning_goals(1)
                     
                     # Verify the results
                     assert len(result) == 2
-                    assert result[0].title == "Test Goal"
-                    assert result[1].title == "Another Goal"
+                    # Goals are sorted by ID in descending order, so ID 2 comes first
+                    assert result[0].title == "Another Goal"
+                    assert result[1].title == "Test Goal"
                     
                     # Verify that ensure_auth_user_reference_exists was called
                     mock_ensure.assert_called_once_with(1, user_service.db)
