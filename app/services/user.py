@@ -45,7 +45,7 @@ class UserService:
         # Business logic: Validate user exists in auth service
         user_data = await auth_service_client.get_user(auth_user_id)
         if not user_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in auth service")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
         # Ensure the auth user reference exists in our database
         await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
@@ -83,8 +83,11 @@ class UserService:
         auth_user_id = current_user["id"]
         
         # Get user's badges and learning goals
-        badges = await self.get_user_badges(auth_user_id)
-        learning_goals = await self.get_user_learning_goals(auth_user_id)
+        # Note: We're not calling get_user_badges and get_user_learning_goals here
+        # because those methods validate that the user exists in auth service,
+        # but we already have the current user from the token
+        badges = await crud.badge.get_badges_by_user(self.db, auth_user_id=auth_user_id)
+        learning_goals = await crud.learning_goal.get_learning_goals_by_user(self.db, auth_user_id=auth_user_id)
         
         # Business logic: Calculate user statistics
         total_badges = len(badges)
@@ -110,7 +113,7 @@ class UserService:
         # Business logic: Validate user exists in auth service
         user_data = await auth_service_client.get_user(auth_user_id)
         if not user_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in auth service")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
         # Ensure the auth user reference exists in our database
         await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
@@ -118,8 +121,8 @@ class UserService:
         # Get badges from database
         badges = await crud.badge.get_badges_by_user(self.db, auth_user_id=auth_user_id)
         
-        # Business logic: Sort badges by creation date (newest first)
-        badges.sort(key=lambda x: x.created_at, reverse=True)
+        # Business logic: Sort badges by achievement date (newest first)
+        badges.sort(key=lambda x: x.date_achieved, reverse=True)
         
         return badges
 
@@ -132,7 +135,7 @@ class UserService:
         # Business logic: Validate user exists in auth service
         user_data = await auth_service_client.get_user(auth_user_id)
         if not user_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in auth service")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
         # Ensure the auth user reference exists in our database
         await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
@@ -159,7 +162,7 @@ class UserService:
         # Business logic: Validate user exists in auth service
         user_data = await auth_service_client.get_user(auth_user_id)
         if not user_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in auth service")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
         # Ensure the auth user reference exists in our database
         await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
@@ -167,8 +170,8 @@ class UserService:
         # Get learning goals from database
         goals = await crud.learning_goal.get_learning_goals_by_user(self.db, auth_user_id=auth_user_id)
         
-        # Business logic: Sort goals by creation date (newest first)
-        goals.sort(key=lambda x: x.created_at, reverse=True)
+        # Business logic: Sort goals by ID (newest first, assuming higher ID means newer)
+        goals.sort(key=lambda x: x.id, reverse=True)
         
         return goals
 
@@ -181,7 +184,7 @@ class UserService:
         # Business logic: Validate user exists in auth service
         user_data = await auth_service_client.get_user(auth_user_id)
         if not user_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in auth service")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
         # Ensure the auth user reference exists in our database
         await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
@@ -216,7 +219,7 @@ class UserService:
         # Business logic: Validate user exists in auth service
         user_data = await auth_service_client.get_user(auth_user_id)
         if not user_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in auth service")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
         # Ensure the auth user reference exists in our database
         await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
@@ -264,7 +267,7 @@ class UserService:
         # Business logic: Validate user exists in auth service
         user_data = await auth_service_client.get_user(auth_user_id)
         if not user_data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in auth service")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
         # Ensure the auth user reference exists in our database
         await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
