@@ -10,5 +10,5 @@ class Badge(Base):
     description = Column(String)
     icon_url = Column(String)
     date_achieved = Column(DateTime, default=datetime.utcnow)
-    # Reference to auth-service user ID
-    auth_user_id = Column(Integer, ForeignKey("auth_users.id"))
+    # Reference to user ID in auth_users table
+    user_id = Column(Integer, ForeignKey("auth_users.id"))

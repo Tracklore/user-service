@@ -2,126 +2,113 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud, models, schemas
 from app.db.database import get_db
+from typing import List, Optional
 from app.services.auth_service import auth_service_client
-from typing import List
-from app.core.settings import settings
-from jose import JWTError, jwt
-from datetime import datetime, timedelta
-
-# This function validates JWT tokens and returns the current user
-async def get_current_user_from_token(token: str = Depends(oauth2_scheme)) -> dict:
-    """Validate JWT token and return the current user."""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        # Decode the JWT token
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id: int = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-        
-        # Fetch user data from auth-service
-        user_data = await auth_service_client.get_user(user_id)
-        if user_data is None:
-            raise credentials_exception
-            
-        return user_data
-    except JWTError:
-        raise credentials_exception
-
-# We need to define the oauth2_scheme for token extraction
-from fastapi.security import OAuth2PasswordBearer
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+import httpx
 
 class UserService:
     def __init__(self, db: AsyncSession = Depends(get_db)):
         self.db = db
 
-    async def get_user_profile(self, auth_user_id: int) -> dict:
-        """Get a user's profile by auth-service user ID."""
-        # Fetch user data from auth-service
-        user_data = await auth_service_client.get_user(auth_user_id)
+    async def get_auth_user(self, user_id: int) -> Optional[dict]:
+        """Get user data from auth service"""
+        try:
+            return await auth_service_client.get_user(user_id)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Unable to fetch user data from auth service"
+            )
+
+    async def get_user_profile(self, user_id: int) -> dict:
+        """Get a user's profile by user ID."""
+        # Fetch user data from our service
+        user_data = await crud.user.get_user(self.db, user_id)
         if not user_data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
+        # Fetch user data from auth service
+        auth_user_data = await self.get_auth_user(user_id)
+        if not auth_user_data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in auth service")
+        
         # Get user's badges and learning goals from our service
-        badges = await crud.badge.get_badges_by_user(self.db, auth_user_id)
-        learning_goals = await crud.learning_goal.get_learning_goals_by_user(self.db, auth_user_id)
+        badges = await crud.badge.get_badges_by_user(self.db, user_id)
+        learning_goals = await crud.learning_goal.get_learning_goals_by_user(self.db, user_id)
         
         # Combine the data
         user_profile = {
-            "id": user_data["id"],
-            "username": user_data["username"],
-            "email": user_data.get("email"),
+            "id": user_data.id,
+            "username": auth_user_data["username"],
+            "email": auth_user_data["email"],
+            "display_name": user_data.display_name,
+            "bio": user_data.bio,
+            "avatar_url": user_data.avatar_url,
+            "location": user_data.location,
             "badges": badges,
-            "learning_goals": learning_goals
+            "learning_goals": learning_goals,
+            "created_at": user_data.created_at,
+            "updated_at": user_data.updated_at
         }
         
         return user_profile
 
-    async def get_my_profile(self, current_user: dict = Depends(get_current_user_from_token)) -> dict:
-        """Get the current user's profile."""
-        return current_user
+    async def get_user_badges(self, user_id: int) -> List[schemas.Badge]:
+        """Get badges for a user by user ID."""
+        # Verify user exists in auth service
+        auth_user_data = await self.get_auth_user(user_id)
+        if not auth_user_data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            
+        return await crud.badge.get_badges_by_user(self.db, user_id)
 
-    async def get_user_badges(self, auth_user_id: int) -> List[schemas.Badge]:
-        """Get badges for a user by auth-service user ID."""
-        # Ensure the auth user reference exists
-        await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
-        
-        return await crud.badge.get_badges_by_user(self.db, auth_user_id=auth_user_id)
-
-    async def create_badge(self, auth_user_id: int, badge: schemas.BadgeCreate, current_user: dict = Depends(get_current_user_from_token)) -> schemas.Badge:
+    async def create_badge(self, user_id: int, badge: schemas.BadgeCreate) -> schemas.Badge:
         """Create a badge for a user."""
-        if current_user["id"] != auth_user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to create a badge for this user")
-        
-        # Ensure the auth user reference exists
-        await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
-        
-        return await crud.badge.create_user_badge(self.db, badge=badge, auth_user_id=auth_user_id)
+        # Verify user exists in auth service
+        auth_user_data = await self.get_auth_user(user_id)
+        if not auth_user_data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            
+        return await crud.badge.create_user_badge(self.db, badge=badge, user_id=user_id)
 
-    async def get_user_learning_goals(self, auth_user_id: int):
-        """Get learning goals for a user by auth-service user ID."""
-        # Ensure the auth user reference exists
-        await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
-        
-        return await crud.learning_goal.get_learning_goals_by_user(self.db, auth_user_id=auth_user_id)
+    async def get_user_learning_goals(self, user_id: int):
+        """Get learning goals for a user by user ID."""
+        # Verify user exists in auth service
+        auth_user_data = await self.get_auth_user(user_id)
+        if not auth_user_data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            
+        return await crud.learning_goal.get_learning_goals_by_user(self.db, user_id)
 
-    async def create_learning_goal(self, auth_user_id: int, learning_goal: schemas.LearningGoalCreate, current_user: dict = Depends(get_current_user_from_token)):
+    async def create_learning_goal(self, user_id: int, learning_goal: schemas.LearningGoalCreate):
         """Create a learning goal for a user."""
-        if current_user["id"] != auth_user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to create a learning goal for this user")
-        
-        # Ensure the auth user reference exists
-        await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
-        
-        return await crud.learning_goal.create_user_learning_goal(self.db, learning_goal=learning_goal, auth_user_id=auth_user_id)
+        # Verify user exists in auth service
+        auth_user_data = await self.get_auth_user(user_id)
+        if not auth_user_data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            
+        return await crud.learning_goal.create_user_learning_goal(self.db, learning_goal=learning_goal, user_id=user_id)
 
-    async def update_learning_goal(self, auth_user_id: int, goal_id: int, learning_goal: schemas.LearningGoalUpdate, current_user: dict = Depends(get_current_user_from_token)):
+    async def update_learning_goal(self, user_id: int, goal_id: int, learning_goal: schemas.LearningGoalUpdate):
         """Update a learning goal for a user."""
-        if current_user["id"] != auth_user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this learning goal")
-        
-        # Ensure the auth user reference exists
-        await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
-        
-        db_learning_goal = await crud.learning_goal.update_learning_goal(self.db, goal_id=goal_id, auth_user_id=auth_user_id, learning_goal=learning_goal)
+        # Verify user exists in auth service
+        auth_user_data = await self.get_auth_user(user_id)
+        if not auth_user_data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            
+        db_learning_goal = await crud.learning_goal.update_learning_goal(self.db, goal_id=goal_id, user_id=user_id, learning_goal=learning_goal)
         if db_learning_goal is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Learning goal not found")
         return db_learning_goal
 
-    async def delete_learning_goal(self, auth_user_id: int, goal_id: int, current_user: dict = Depends(get_current_user_from_token)):
+    async def delete_learning_goal(self, user_id: int, goal_id: int):
         """Delete a learning goal for a user."""
-        if current_user["id"] != auth_user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this learning goal")
-        
-        # Ensure the auth user reference exists
-        await auth_service_client.ensure_auth_user_reference_exists(auth_user_id, self.db)
-        
-        db_learning_goal = await crud.learning_goal.delete_learning_goal(self.db, goal_id=goal_id, auth_user_id=auth_user_id)
+        # Verify user exists in auth service
+        auth_user_data = await self.get_auth_user(user_id)
+        if not auth_user_data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            
+        db_learning_goal = await crud.learning_goal.delete_learning_goal(self.db, goal_id=goal_id, user_id=user_id)
         if db_learning_goal is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Learning goal not found")
         return db_learning_goal
