@@ -154,16 +154,20 @@ async def test_create_badge_authorized(user_service):
                     auth_user_id=1
                 )
                 
-                # Mock the badge create schema
-                badge_create = BadgeCreate(**SAMPLE_BADGE_DATA)
-                
-                # Call the function
-                result = await user_service.create_badge(1, badge_create, current_user)
-                
-                # Verify the results
-                assert result.id == 1
-                assert result.name == "Test Badge"
-                assert result.auth_user_id == 1
+                # Also mock get_badges_by_user since create_badge calls get_user_badges
+                mock_get_badges = AsyncMock()
+                mock_get_badges.return_value = []
+                with patch('app.services.user.crud.badge.get_badges_by_user', mock_get_badges):
+                    # Mock the badge create schema
+                    badge_create = BadgeCreate(**SAMPLE_BADGE_DATA)
+                    
+                    # Call the function
+                    result = await user_service.create_badge(1, badge_create, current_user)
+                    
+                    # Verify the results
+                    assert result.id == 1
+                    assert result.name == "Test Badge"
+                    assert result.auth_user_id == 1
 
 
 @pytest.mark.asyncio
@@ -236,16 +240,20 @@ async def test_create_learning_goal_authorized(user_service):
                     auth_user_id=1
                 )
                 
-                # Mock the learning goal create schema
-                learning_goal_create = LearningGoalCreate(**SAMPLE_LEARNING_GOAL_DATA)
-                
-                # Call the function
-                result = await user_service.create_learning_goal(1, learning_goal_create, current_user)
-                
-                # Verify the results
-                assert result.id == 1
-                assert result.title == "Test Learning Goal"
-                assert result.auth_user_id == 1
+                # Also mock get_learning_goals_by_user since create_learning_goal calls get_user_learning_goals
+                mock_get_goals = AsyncMock()
+                mock_get_goals.return_value = []
+                with patch('app.services.user.crud.learning_goal.get_learning_goals_by_user', mock_get_goals):
+                    # Mock the learning goal create schema
+                    learning_goal_create = LearningGoalCreate(**SAMPLE_LEARNING_GOAL_DATA)
+                    
+                    # Call the function
+                    result = await user_service.create_learning_goal(1, learning_goal_create, current_user)
+                    
+                    # Verify the results
+                    assert result.id == 1
+                    assert result.title == "Test Learning Goal"
+                    assert result.auth_user_id == 1
 
 
 @pytest.mark.asyncio
@@ -288,21 +296,32 @@ async def test_update_learning_goal_authorized(user_service):
                     auth_user_id=1
                 )
                 
-                # Mock the learning goal update schema
-                learning_goal_update = LearningGoalUpdate(
-                    title="Updated Goal",
-                    description="Updated Description",
-                    status="completed",
-                    streak_count=10
+                # Also mock get_learning_goal since update_learning_goal calls get_learning_goal
+                mock_get_learning_goal = AsyncMock()
+                mock_get_learning_goal.return_value = LearningGoal(
+                    id=1,
+                    title="Test Goal",
+                    description="Test Description",
+                    status="in-progress",
+                    streak_count=5,
+                    auth_user_id=1
                 )
-                
-                # Call the function
-                result = await user_service.update_learning_goal(1, 1, learning_goal_update, current_user)
-                
-                # Verify the results
-                assert result.id == 1
-                assert result.title == "Updated Goal"
-                assert result.status == "completed"
+                with patch('app.services.user.crud.learning_goal.get_learning_goal', mock_get_learning_goal):
+                    # Mock the learning goal update schema
+                    learning_goal_update = LearningGoalUpdate(
+                        title="Updated Goal",
+                        description="Updated Description",
+                        status="completed",
+                        streak_count=10
+                    )
+                    
+                    # Call the function
+                    result = await user_service.update_learning_goal(1, 1, learning_goal_update, current_user)
+                    
+                    # Verify the results
+                    assert result.id == 1
+                    assert result.title == "Updated Goal"
+                    assert result.status == "completed"
 
 
 @pytest.mark.asyncio
@@ -378,12 +397,23 @@ async def test_delete_learning_goal_authorized(user_service):
                     auth_user_id=1
                 )
                 
-                # Call the function
-                result = await user_service.delete_learning_goal(1, 1, current_user)
-                
-                # Verify the results
-                assert result is not None
-                assert result.id == 1
+                # Also mock get_learning_goal since delete_learning_goal calls get_learning_goal
+                mock_get_learning_goal = AsyncMock()
+                mock_get_learning_goal.return_value = LearningGoal(
+                    id=1,
+                    title="Test Goal",
+                    description="Test Description",
+                    status="in-progress",
+                    streak_count=5,
+                    auth_user_id=1
+                )
+                with patch('app.services.user.crud.learning_goal.get_learning_goal', mock_get_learning_goal):
+                    # Call the function
+                    result = await user_service.delete_learning_goal(1, 1, current_user)
+                    
+                    # Verify the results
+                    assert result is not None
+                    assert result.id == 1
 
 
 @pytest.mark.asyncio
