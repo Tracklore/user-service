@@ -112,11 +112,14 @@ async def test_get_user_badges(user_service):
             
             with patch.object(auth_service_client, 'ensure_auth_user_reference_exists') as mock_ensure:
                 # Mock the database execute method to return a proper result
-                mock_result = AsyncMock()
-                mock_result.scalars().all.return_value = [
+                mock_scalars = MagicMock()
+                mock_scalars.all.return_value = [
                     Badge(id=1, name="Test Badge", description="Test Description", icon_url="http://example.com/icon.png", auth_user_id=1),
                     Badge(id=2, name="Another Badge", description="Another Description", icon_url="http://example.com/icon2.png", auth_user_id=1)
                 ]
+                
+                mock_result = AsyncMock()
+                mock_result.scalars.return_value = mock_scalars
                 
                 with patch.object(user_service.db, 'execute', return_value=mock_result):
                     # Call the function
@@ -193,11 +196,14 @@ async def test_get_user_learning_goals(user_service):
             
             with patch.object(auth_service_client, 'ensure_auth_user_reference_exists') as mock_ensure:
                 # Mock the database execute method to return a proper result
-                mock_result = AsyncMock()
-                mock_result.scalars().all.return_value = [
+                mock_scalars = MagicMock()
+                mock_scalars.all.return_value = [
                     LearningGoal(id=1, title="Test Goal", description="Test Description", status="in-progress", streak_count=5, auth_user_id=1),
                     LearningGoal(id=2, title="Another Goal", description="Another Description", status="completed", streak_count=10, auth_user_id=1)
                 ]
+                
+                mock_result = AsyncMock()
+                mock_result.scalars.return_value = mock_scalars
                 
                 with patch.object(user_service.db, 'execute', return_value=mock_result):
                     # Call the function
